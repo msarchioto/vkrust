@@ -1,0 +1,18 @@
+[package]
+name = "shell"
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+description = "fern userspace shell"
+
+[dependencies]
+abi = { path = "../abi" }
+linked_list_allocator = "0.10"
+
+[profile.dev]
+panic = "abort"
+
+[profile.release]
+panic = "abort"
+lto = false
+codegen-units = 1
