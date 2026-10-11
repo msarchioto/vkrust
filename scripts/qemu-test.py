@@ -12,8 +12,16 @@ ISO = os.path.join(ROOT, "target", "vkrust.iso")
 TIMEOUT = 180
 
 
+def firmware_args():
+    script = os.path.join(ROOT, "scripts", "qemu-fw.sh")
+    out = subprocess.check_output(["bash", script], text=True)
+    return [line for line in out.splitlines() if line]
+
+
 def qemu_cmd():
+    fw = firmware_args()
     args = [
+        *fw,
         "-cdrom", ISO,
         "-m", "256M",
         "-display", "none",
@@ -28,10 +36,15 @@ def qemu_cmd():
     if shutil.which("docker"):
         return [
             "docker", "run", "--rm", "-i",
-            "-v", f"{ROOT}:/src", "-w", "/src", "vkrust-osdev",
+            "-v", f"{ROOT}:/src", "-w", "/src",
+            "-v", "/usr/share/ovmf:/usr/share/ovmf:ro",
+            "-v", "/usr/share/OVMF:/usr/share/OVMF:ro",
+            "-v", "/usr/share/qemu:/usr/share/qemu:ro",
+            "vkrust-osdev",
             "qemu-system-x86_64",
+            *fw,
             "-cdrom", "target/vkrust.iso",
-            *args[2:],
+            *args[len(fw) + 2 :],
         ]
     sys.exit("qemu-system-x86_64 is not installed and docker is unavailable")
 

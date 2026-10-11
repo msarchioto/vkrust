@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 560" role="img">
   <title>vkr-user from the machine up to the shell</title>
-  <desc>QEMU or a PC, then Limine, then the ring-0 kernel modules, the shared abi crate, and the ring-3 shell.</desc>
+  <desc>QEMU with OVMF, then the UEFI loader, then the ring-0 kernel modules, the shared abi crate, and the ring-3 shell.</desc>
   <style>
     text { font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif; fill: #1c1917; }
     .title { font-size: 22px; font-weight: 650; }
@@ -16,11 +16,11 @@
 
   <rect x="40" y="88" width="880" height="56" rx="10" fill="#ece7df" stroke="#d9d1c5"/>
   <text class="label" x="60" y="122">Machine</text>
-  <text class="small" x="180" y="122">QEMU, or a PC with a BIOS or UEFI firmware</text>
+  <text class="small" x="180" y="122">QEMU with OVMF, or a PC with UEFI firmware</text>
 
   <rect x="40" y="160" width="880" height="72" rx="10" fill="#f8efe3" stroke="#e2c9a4"/>
-  <text class="label" x="60" y="192">Limine 10.8.5</text>
-  <text class="small" x="60" y="214">Hybrid CD: El Torito BIOS stage and EFI/BOOT/BOOTX64.EFI. Loads the kernel and fills boot requests.</text>
+  <text class="label" x="60" y="192">UEFI loader</text>
+  <text class="small" x="60" y="214">BOOTX64.EFI reads \boot\kernel, maps it at 0xffffffff80000000, and jumps to kmain.</text>
 
   <rect x="40" y="248" width="880" height="148" rx="10" fill="#143d2c"/>
   <text class="label on-dark" x="60" y="278">Kernel, ring 0</text>

@@ -1,4 +1,4 @@
-//! Physical frame allocator and kernel heap, on top of Limine's page tables.
+//! Physical frame allocator and kernel heap, on top of the loader's page tables.
 
 use x86_64::registers::control::Cr3;
 use x86_64::structures::paging::{
@@ -28,7 +28,7 @@ pub struct FrameAlloc {
 }
 
 impl FrameAlloc {
-    pub fn new(entries: &[&MemmapEntry], offset: VirtAddr) -> Self {
+    pub fn new(entries: &[MemmapEntry], offset: VirtAddr) -> Self {
         let mut regions = [Region { start: 0, end: 0 }; 64];
         let mut count = 0;
         for entry in entries {

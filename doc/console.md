@@ -8,7 +8,7 @@ The shell sees a terminal. The terminal is a framebuffer grid when QEMU provides
 
 `write` to fd 1 or fd 2 calls `console::write_bytes`. Those bytes are painted into the cell grid and handed to COM1. A headless test and a windowed boot therefore see one session. `make test` reads COM1 and does not need the framebuffer.
 
-If Limine provides no framebuffer, painting is skipped and `TIOCGWINSZ` reports 24 rows by 80 columns. With a framebuffer, the grid is derived from the mode. Modes at least 900 pixels wide scale the 8×8 glyph by two, so a 1280×800 window is still a modest number of columns rather than a tiny font.
+If the loader provides no framebuffer, painting is skipped and `TIOCGWINSZ` reports 24 rows by 80 columns. With a framebuffer, the grid is derived from the mode. Modes at least 900 pixels wide scale the 8×8 glyph by two, so a 1280×800 window is still a modest number of columns rather than a tiny font.
 
 Glyphs come from `font8x8`. The basic font is indexed by Unicode scalar, and the least significant bit of a row is the leftmost pixel. Cells store a character and are `Copy`. The parser accepts the ANSI sequences the shell and vim actually emit:
 
@@ -22,7 +22,7 @@ Glyphs come from `font8x8`. The basic font is indexed by Unicode scalar, and the
 
 `clear` in the shell sends `ESC[2J` and then `ESC[H`. vim redraws the whole grid the same way on every key.
 
-Pixels use the red, green, and blue mask shifts from the framebuffer request. The code does not assume "XRGB in that order" beyond what the masks say. `memory_model` 1 is RGB, which is what QEMU's default linear framebuffer is.
+Pixels use the red, green, and blue mask shifts from the framebuffer handoff. The code does not assume a channel order beyond what the masks say. QEMU's GOP mode is usually BGR, so the red shift is 16. The loader sets `memory_model` to 1 and the console does not read that field.
 
 ## Input devices
 

@@ -10,7 +10,7 @@ PHDRS
 
 SECTIONS
 {
-    /* Limine loads the kernel in the higher half, inside the top 2 GiB. */
+    /* The loader maps the kernel in the higher half, inside the top 2 GiB. */
     . = 0xffffffff80000000;
 
     .text : {
@@ -27,9 +27,6 @@ SECTIONS
 
     .data : {
         *(.data .data.*)
-        KEEP(*(.requests_start_marker))
-        KEEP(*(.requests))
-        KEEP(*(.requests_end_marker))
     } :data
 
     .bss : {

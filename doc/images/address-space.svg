@@ -19,11 +19,11 @@
   <rect x="40" y="112" width="880" height="72" rx="10" fill="#143d2c"/>
   <text class="name on-dark" x="60" y="142">Kernel image</text>
   <text class="addr on-dark" x="60" y="166">0xffffffff80000000</text>
-  <text class="note on-dark" x="340" y="154">.text, .rodata, .data with Limine requests, .bss stacks</text>
+  <text class="note on-dark" x="340" y="154">.text, .rodata, .data, .bss stacks</text>
 
   <rect x="40" y="196" width="880" height="72" rx="10" fill="#1f6b45"/>
   <text class="name on-dark" x="60" y="226">HHDM window</text>
-  <text class="addr on-dark" x="60" y="250">base given by Limine</text>
+  <text class="addr on-dark" x="60" y="250">0xffff800000000000</text>
   <text class="note on-dark" x="340" y="238">physical RAM, seen by OffsetPageTable at virtual = physical + offset</text>
 
   <text class="group" x="40" y="300">NON-CANONICAL</text>

@@ -7,6 +7,7 @@ description = "VKRUST - Vibe Kernel in RUST"
 
 [dependencies]
 abi = { path = "../abi" }
+bootinfo = { path = "../bootinfo" }
 x86_64 = "0.15"
 pic8259 = "0.11"
 pc-keyboard = "0.8"

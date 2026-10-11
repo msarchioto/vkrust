@@ -1,57 +1,55 @@
 # Boot
 
-vkr-user is a higher-half ELF. Limine loads it, writes answers into requests that live in `.data`, and jumps to `kmain`.
+vkr-user is a higher-half ELF. The loader in `loader/` reads it from the CD, builds page tables, and jumps to `kmain` with a [`BootInfo`](../bootinfo/src/lib.rs) pointer in `rdi`.
 
 ## The CD
 
-`make` builds the shell, builds the kernel with that ELF embedded, then runs `scripts/make-iso.sh`.
+`make` builds the shell, builds the kernel with that ELF embedded, builds the loader, then runs `scripts/make-iso.sh`.
 
-The script clones the `v10.8.5-binary` tag of Limine into `target/limine` when the host tool is missing, and compiles it. The ISO root is:
+`scripts/make-fat.py` writes a 16 MiB FAT16 image, `target/efi.img`, with two files:
 
-| Path on the CD | Contents |
+| Path in the FAT image | Contents |
 | --- | --- |
+| `EFI/BOOT/BOOTX64.EFI` | The loader |
 | `boot/kernel` | The vkr-user kernel ELF, shell included |
-| `boot/limine/limine.conf` | Timeout 0, one entry, protocol `limine` |
-| `boot/limine/limine-bios.sys` | BIOS stage, installed by `limine bios-install` |
-| `boot/limine/limine-bios-cd.bin` | El Torito no-emulation boot image |
-| `boot/limine/limine-uefi-cd.bin` | UEFI CD boot image |
-| `EFI/BOOT/BOOTX64.EFI` | UEFI application |
 
-`xorriso` writes a hybrid image: El Torito for BIOS, an EFI boot image, a protective MBR. `limine bios-install` then plants the BIOS stages. It reports that no partition was active and marks partition 1 active. That message is the installer fixing the MBR, and the image boots after it.
+`xorriso` stores that image on `target/vkrust.iso` as the El Torito EFI boot image and as the EFI system partition behind a protective MBR. The same two files are copied onto the ISO9660 tree. OVMF sometimes opens the CD volume and sometimes opens the FAT image. The loader reads `\boot\kernel` from the volume it was started from, then scans the other volumes if that file is not there.
 
-`limine.conf` names the kernel as `boot():/boot/kernel`. The `boot()` device is the device Limine itself was loaded from, so the same file works for the CD and for a copied tree.
+`make run` and `make test` boot the ISO with OVMF. `scripts/qemu-fw.sh` prefers the combined firmware `/usr/share/ovmf/OVMF.fd` on QEMU's default `pc` machine, because the kernel programs an 8259 PIC. When that file is missing, the script uses the split 4 MiB firmware on `q35` and keeps a writable variable store at `target/ovmf-vars.fd`.
 
-## Why Limine, and why revision 4
+## What the loader hands over
 
-The run command is `qemu-system-x86_64 -cdrom`. That needs a real CD image with a firmware path for BIOS and a firmware path for UEFI. Limine publishes both, and its protocol is a set of tagged structures in the kernel ELF rather than a custom boot stub linked into the kernel.
+The handoff lives in the `bootinfo` crate. `kmain` receives a pointer to one `BootInfo`. The record and the arrays it points at stay mapped for the life of the kernel. Every pointer in the record is a virtual address in the higher-half direct map.
 
-The tag this tree builds is **10.8.5**. That binary implements base revisions through 4. Revision 6 exists in the protocol document and arrived in Limine 11. Requesting a revision the loader does not implement leaves the revision word unchanged, and `kmain` panics with "Limine base revision is not supported." Pinning the tag and requesting revision 4 keeps the loader and the kernel in agreement.
+| Field | Value |
+| --- | --- |
+| `hhdm_offset` | `0xffff800000000000`, the virtual address of physical byte 0 |
+| `memory_map` | Usable RAM. `entry_type` 0 is usable, and the loader emits only that type |
+| `framebuffer` | The current GOP mode, or null. Address, size, pitch, and the red, green, and blue mask shifts. A serial-only boot is allowed |
 
-The requests are written out in `kernel/src/boot.rs` to match the C protocol. They are `#[used]` and placed in `.requests`, between the start and end markers, inside the `.data` program header. The linker script `KEEP`s those sections. `boot::take` also references every request. Either step alone is enough to stop a smart linker from dropping a static that Rust thinks is unread; both are there because a dropped request looks exactly like a loader that ignored you.
+Usable ranges are conventional memory plus the boot-services code and data that become free when boot services end. The loader keeps its own pages out of that list: the kernel image, the page tables, the 128 KiB boot stack, the handoff block, and the trampoline page. When the framebuffer sits inside a usable range, that span is cut out so the frame allocator does not hand the screen to the heap.
 
-## What the kernel asks for
-
-| Request | What vkr-user asks | Why |
-| --- | --- | --- |
-| Base revision | 4 | The newest revision Limine 10.8.5 implements. After a successful boot the revision qword is 0. |
-| Stack size | 128 KiB | The stack Limine uses to enter `kmain`. This is the boot stack, separate from the syscall stack. |
-| Paging mode | mode, max, and min all 0 | 0 means 4-level paging. `OffsetPageTable` walks a 4-level table. |
-| HHDM | the offset | Virtual address of physical byte 0. Adding it to a physical address yields a pointer the kernel can dereference. |
-| Memory map | the entries | Usable RAM for the frame allocator. Type 0 is usable. |
-| Framebuffer | the first one, if any | Pixel buffer, pitch, and RGB masks. A serial-only boot is allowed. |
-
-Revision 4's higher-half map covers usable RAM, bootloader-reclaimable memory, the kernel, modules, the framebuffer, ACPI, and reserved regions that the firmware mapped. Limine dropped the low identity map at revision 1, so the addresses where the shell will live are empty until `process::enter` maps them. That is what we want: user pages exist only where the loader created them.
+ACPI tables and UEFI runtime-services memory stay unmapped. The kernel does not read them.
 
 ## From firmware to `kmain`
 
+The loader is a UEFI application. While boot services are alive it allocates pages and reads files. It exits boot services before the jump.
+
+1. Open `\boot\kernel` and copy each `PT_LOAD` segment into fresh pages. The kernel is linked at `0xffffffff80000000` with static relocation, so the link address is the run address. There is no relocation pass.
+2. Allocate a 128 KiB stack, the handoff block, a 1 MiB page-table pool, and one page below 512 KiB for the jump stub.
+3. Build a 4-level page table. Physical memory is mapped at `physical + 0xffff800000000000`, including the loader's own pages, so the kernel can walk page tables through that window. Kernel segments are mapped at their link addresses. The trampoline page is identity-mapped. The rest of the low half stays empty, so `0x400000` is free until `process::enter` maps the shell.
+4. Exit boot services, write the usable map and the optional framebuffer into the handoff block, and jump. The stub loads a small 64-bit GDT, switches `CR3`, points `RSP` at the top of the boot stack, and enters `kmain` with `BootInfo` in `rdi`.
+
+The kernel replaces that GDT at once. The loader's table only has to stay valid until `gdt::init`.
+
 ```mermaid
 sequenceDiagram
-  participant FW as Firmware
-  participant L as Limine 10.8.5
+  participant FW as OVMF
+  participant L as loader
   participant K as kmain
   participant S as shell
-  FW->>L: El Torito or BOOTX64.EFI
-  L->>L: Read limine.conf
+  FW->>L: EFI/BOOT/BOOTX64.EFI
+  L->>L: Read \boot\kernel
   L->>K: Map kernel at 0xffffffff80000000
   L->>K: Fill HHDM, memmap, framebuffer
   L->>K: Jump to kmain
@@ -59,16 +57,16 @@ sequenceDiagram
   K->>S: Map ELF, stack, heap, then iretq
 ```
 
-`kmain` is `extern "C" -> !`. It does not return to Limine.
+`kmain` is `extern "C" -> !`. It does not return to the loader.
 
 The order inside `kmain` is the order the dependencies force:
 
 1. **Serial.** COM1 is initialized first and prints `vkr-user kernel`. A panic from here on has a console that does not need the framebuffer or the heap.
 2. **CR4.** SMAP and SMEP are cleared. Later, syscall code copies bytes from user addresses with ordinary pointer reads. SMAP would fault those reads. This happens before any user page exists, so the flag is already off when the first copy runs.
-3. **`boot::take`.** Panic if the base revision was not accepted. Stash the HHDM offset, the memory map, and the optional framebuffer.
+3. **`boot::take`.** Panic if the `BootInfo` pointer is missing or the memory map is empty. Stash the HHDM offset, the memory map, and the optional framebuffer.
 4. **GDT and TSS.** Load the kernel code and data selectors and the task register. The IDT records the current CS when it is loaded, so the GDT comes first. Details are in [CPU](cpu.md).
 5. **Input queues, then the IDT and the PIC.** `interrupts::init` programs the PICs, masks every IRQ except the keyboard and COM1, and executes `sti`. Interrupt handlers only touch the static byte rings allocated in step 5, so enabling interrupts before the heap is safe.
-6. **Page-table walker and frame allocator.** The walker is Limine's table, reached through HHDM. The allocator yields usable frames at or above 1 MiB.
+6. **Page-table walker and frame allocator.** The walker is the loader's table, reached through HHDM. The allocator yields usable frames at or above 1 MiB.
 7. **Kernel heap.** 4 MiB mapped with supervisor pages. `console` is about to allocate a cell grid, and `vfs` is about to allocate the seed tree.
 8. **Console, then VFS.** The framebuffer console mirrors to serial. The filesystem seeds `/`, `/home/user`, `/tmp`, `/README`, and `/home/user/welcome.txt`.
 9. **`process::enter`.** Map the embedded shell, the user stack, and the user heap. `iretq` into ring 3. This function does not return.

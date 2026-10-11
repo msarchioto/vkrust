@@ -1,4 +1,4 @@
-//! VKRUST - Vibe Kernel in RUST. Limine boots it; the shell runs in ring 3.
+//! VKRUST - Vibe Kernel in RUST. A UEFI loader boots it; the shell runs in ring 3.
 
 #![no_std]
 #![no_main]
@@ -23,11 +23,12 @@ use x86_64::registers::control::{Cr4, Cr4Flags};
 
 use crate::console::kprintln;
 use crate::serial::serial_println;
+use bootinfo::BootInfo;
 
 static SHELL_ELF: &[u8] = include_bytes!(env!("USER_ELF"));
 
 #[unsafe(no_mangle)]
-extern "C" fn kmain() -> ! {
+extern "C" fn kmain(info: *const BootInfo) -> ! {
     serial::init();
     serial_println!("vkr-user kernel");
 
@@ -39,7 +40,7 @@ extern "C" fn kmain() -> ! {
         Cr4::write(flags);
     }
 
-    let boot = boot::take();
+    let boot = unsafe { boot::take(info) };
     gdt::init();
     input::init();
     interrupts::init();

@@ -1,0 +1,19 @@
+[package]
+name = "loader"
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+description = "VKRUST UEFI loader"
+
+[dependencies]
+bootinfo = { path = "../bootinfo" }
+uefi = { version = "0.41", features = ["alloc", "global_allocator"] }
+x86_64 = "0.15"
+
+[profile.dev]
+panic = "abort"
+
+[profile.release]
+panic = "abort"
+lto = false
+codegen-units = 1

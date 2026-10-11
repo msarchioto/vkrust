@@ -1,6 +1,6 @@
 # Memory
 
-vkr-user keeps Limine's page tables. It adds a bump allocator for physical frames and two virtual heaps: one for the kernel, one for the shell.
+vkr-user keeps the loader's page tables. It adds a bump allocator for physical frames and two virtual heaps: one for the kernel, one for the shell.
 
 ![Virtual address space, not to scale](images/address-space.png)
 
@@ -8,7 +8,7 @@ vkr-user keeps Limine's page tables. It adds a bump allocator for physical frame
 
 The kernel is linked at `0xffffffff80000000` with `code-model=kernel` and `relocation-model=static`.
 
-The high address is the higher-half window Limine uses for the kernel. `code-model=kernel` tells LLVM the kernel lives in the top 2 GiB of the address space, so it can reach its own data with normal addressing. `relocation-model=static` means the ELF has no dynamic relocations: the link address is the run address. The linker script puts `.text`, `.rodata`, and `.data`/`.bss` in three `PT_LOAD` segments. The Limine request markers sit inside `.data`, which is writable, because the loader writes the response pointers into those structs.
+The high address is the higher-half window the loader maps the kernel into. `code-model=kernel` tells LLVM the kernel lives in the top 2 GiB of the address space, so it can reach its own data with normal addressing. `relocation-model=static` means the ELF has no dynamic relocations: the link address is the run address. The linker script puts `.text`, `.rodata`, and `.data`/`.bss` in three `PT_LOAD` segments. The loader copies those segments onto fresh frames and maps them at the link address.
 
 The shell is linked at `0x400000`, also with static relocation, and with a 4 KiB maximum page size. It is a low, fixed executable. The kernel maps whatever `PT_LOAD` says, so the link address and the run address are the same number and there is no loader relocation pass to write.
 
@@ -18,13 +18,13 @@ The kernel heap is at `0x0000444444440000` for 4 MiB. That is in the lower canon
 
 ## HHDM and `OffsetPageTable`
 
-Limine's higher-half direct map is a window where virtual address = physical address + offset. `boot::take` saves the offset. `memory::mapper` reads CR3, adds the offset, and builds an `OffsetPageTable` on that pointer.
+The higher-half direct map is a window where virtual address = physical address + `0xffff800000000000`. `boot::take` saves that offset. `memory::mapper` reads CR3, adds the offset, and builds an `OffsetPageTable` on that pointer.
 
-New frames are zeroed through the same window before they are mapped to their virtual address. The kernel never identity-maps low RAM for its own convenience. Revision 4 already did not put an identity map there, and user mappings are created explicitly.
+New frames are zeroed through the same window before they are mapped to their virtual address. The loader identity-maps one trampoline page below 512 KiB and leaves the rest of the low half empty. The frame allocator skips everything below 1 MiB, so that page is never handed out. User mappings are created explicitly.
 
 ## The frame allocator
 
-`FrameAlloc` keeps up to 64 usable regions from the Limine memory map.
+`FrameAlloc` keeps up to 64 usable regions from the loader's memory map.
 
 - Entries whose type is not usable are ignored.
 - The region is rounded inward to whole 4 KiB frames.

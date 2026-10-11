@@ -4,7 +4,7 @@ vkr-user exists to boot on QEMU and give you a shell. The shell has to be able t
 
 ## What runs
 
-![The machine, Limine, the kernel, the abi crate, and the shell](images/layers.png)
+![The machine, the UEFI loader, the kernel, the abi crate, and the shell](images/layers.png)
 
 There is one kernel and one user program.
 
@@ -51,7 +51,7 @@ So the design stops at one process:
 
 - Scheduling is "the shell runs until it makes a syscall or a device IRQ fires." The timer IRQ stays masked, so nothing preempts the shell on a tick.
 - Storage is RAM. `vfs` is a vector of nodes. Rebooting clears it. The seeded `README` says so.
-- Programs are one static ELF, embedded in the kernel image with `include_bytes!`. The ISO contains a single kernel file, `boot/kernel`.
+- Programs are one static ELF, embedded in the kernel image with `include_bytes!`. The CD carries the loader and one kernel file, `boot/kernel`.
 - Trust is the trust of a demo. The kernel turns off SMAP so it can copy syscall buffers with ordinary loads. See [CPU](cpu.md) and [Syscalls](syscalls.md).
 
 ## Choices
@@ -60,9 +60,9 @@ Each row is a constraint from the goal, and the mechanism that satisfies it.
 
 | Goal | How vkr-user meets it |
 | --- | --- |
-| `qemu-system-x86_64 -cdrom` boots the image | Limine hybrid ISO: BIOS El Torito and UEFI `BOOTX64.EFI` |
-| The bootloader vkr-user builds against understands the requests | Limine **10.8.5**, base revision **4** |
-| Page tables stay something `OffsetPageTable` can walk | Paging-mode request asks only for 4-level paging |
+| `make run` boots the image under QEMU | UEFI CD: OVMF loads `EFI/BOOT/BOOTX64.EFI` from the FAT image |
+| The kernel receives a memory map and an optional framebuffer | `BootInfo` in `rdi`, filled by the loader before the jump |
+| Page tables stay something `OffsetPageTable` can walk | The loader builds 4-level tables and a higher-half direct map |
 | The shell is protected from a bad pointer in the kernel's own heap | User copies are allowed only inside regions recorded at load time |
 | `ls` and `vim` work with no disk | In-memory VFS, seeded with `/`, `/home/user`, `/tmp`, and two text files |
 | The editor and the shell share a keyboard | Kernel tty. Canonical mode for the prompt, raw mode for vim |
@@ -71,7 +71,7 @@ Each row is a constraint from the goal, and the mechanism that satisfies it.
 
 ## Language and toolchain
 
-Both crates are `no_std` and use the `alloc` crate. The target is `x86_64-unknown-none`. That target has no red zone, which matters for interrupt code.
+The kernel and the shell are `no_std` and use the `alloc` crate. Their target is `x86_64-unknown-none`. That target has no red zone, which matters for interrupt code. The loader is `no_std` as well and targets `x86_64-unknown-uefi`. The `bootinfo` crate is the `repr(C)` handoff they share.
 
 `rust-toolchain.toml` selects nightly because the kernel uses `abi_x86_interrupt` for the fault and IRQ handlers. The syscall entry itself is a naked function, because the CPU arrives there with an interrupt frame already on the stack and the handler has to save registers by hand.
 

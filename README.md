@@ -1,25 +1,25 @@
 # VKRUST - Vibe Kernel in RUST
 
-A small 64-bit x86_64 kernel and POSIX-style shell, both written in Rust. It boots from a CD image under QEMU. The shell runs in ring 3 and can `ls`, `cd`, `mkdir`, `touch`, `cp`, `mv`, and edit files with `vim`. The filesystem is in memory. The architecture, with diagrams, is documented in [`doc/`](doc/README.md), including a [glossary](doc/README.md#glossary) of the terms those pages use.
+A small 64-bit x86_64 kernel and POSIX-style shell, both written in Rust. The `loader` crate is a UEFI application that reads the kernel from a CD image and jumps to it. The shell runs in ring 3 and can `ls`, `cd`, `mkdir`, `touch`, `cp`, `mv`, and edit files with `vim`. The filesystem is in memory. The architecture, with diagrams, is documented in [`doc/`](doc/README.md), including a [glossary](doc/README.md#glossary) of the terms those pages use.
 
 ## Build and run
 
 Install the tools once:
 
 ```bash
-sudo apt install build-essential xorriso qemu-system-x86 git
+sudo apt install xorriso qemu-system-x86 ovmf python3
 ```
 
-If those packages are missing and a Docker image named `vkrust-osdev` exists, `make` builds the ISO inside that image instead.
+If `xorriso` is missing and a Docker image named `vkrust-osdev` exists, `scripts/make-iso.sh` runs `xorriso` inside that image. The FAT image is built on the host with `python3`.
 
-Rust nightly (with the `rust-src` component and the `x86_64-unknown-none` target) is selected by `rust-toolchain.toml`. Then:
+Rust nightly is selected by `rust-toolchain.toml`, with the `rust-src` component and the targets `x86_64-unknown-none` and `x86_64-unknown-uefi`. Then:
 
 ```bash
 make
-qemu-system-x86_64 -cdrom target/vkrust.iso -m 256M
+make run
 ```
 
-`make run` does both. At the `vkr-user:/$ ` prompt, `help` lists the commands. Leave the guest with `poweroff`.
+`make` builds the shell, the kernel, the loader, and `target/vkrust.iso`. `make run` boots that ISO under OVMF. `scripts/qemu-fw.sh` picks the firmware. At the `vkr-user:/$ ` prompt, `help` lists the commands. Leave the guest with `poweroff`.
 
 `make test` boots the ISO with no display and checks `ls`, `cd`, `mkdir`, `touch`, `cp`, `mv`, and `vim` over the serial port.
 

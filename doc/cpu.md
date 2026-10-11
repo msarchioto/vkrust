@@ -36,7 +36,7 @@ Both arrays are `#[link_section = ".bss"]`. A `static` that Rust can prove is al
 
 The double-fault handler is registered with `set_stack_index(DOUBLE_FAULT_IST)` where that constant is 0, and the TSS is filled at `interrupt_stack_table[0]`. The gate and the TSS slot are the same index in the source.
 
-Limine's 128 KiB stack is only the stack that enters `kmain`. By the time the shell runs, ring-3 entries use `RSP0_STACK`.
+The loader's 128 KiB stack is only the stack that enters `kmain`. By the time the shell runs, ring-3 entries use `RSP0_STACK`.
 
 ## Entering ring 3
 
