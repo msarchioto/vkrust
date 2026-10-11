@@ -23,6 +23,8 @@ make run
 
 `make test` boots the ISO with no display and checks `ls`, `cd`, `mkdir`, `touch`, `cp`, `mv`, and `vim` over the serial port.
 
+`scripts/make-fat.py` writes a FAT12 volume sized to the loader and the kernel. With those files at 51,200 and 324,520 bytes, `target/efi.img` is 381,440 bytes and `target/vkrust.iso` is 1,171,456 bytes (1.12 MiB). The Limine ISO was 4.08 MiB (4,278,272 bytes), and 3,533,026 bytes of it were Limine's boot files.
+
 ## Showcase
 
 These frames are the guest framebuffer from `target/vkrust.iso`. Each one starts from `clear`, and the prompt is `vkr-user:/$ `.

@@ -6,7 +6,7 @@ vkr-user is a higher-half ELF. The loader in `loader/` reads it from the CD, bui
 
 `make` builds the shell, builds the kernel with that ELF embedded, builds the loader, then runs `scripts/make-iso.sh`.
 
-`scripts/make-fat.py` writes a 16 MiB FAT16 image, `target/efi.img`, with two files:
+`scripts/make-fat.py` writes a FAT12 image, `target/efi.img`, sized to two files:
 
 | Path in the FAT image | Contents |
 | --- | --- |
@@ -14,6 +14,8 @@ vkr-user is a higher-half ELF. The loader in `loader/` reads it from the CD, bui
 | `boot/kernel` | The vkr-user kernel ELF, shell included |
 
 `xorriso` stores that image on `target/vkrust.iso` as the El Torito EFI boot image and as the EFI system partition behind a protective MBR. The same two files are copied onto the ISO9660 tree. OVMF sometimes opens the CD volume and sometimes opens the FAT image. The loader reads `\boot\kernel` from the volume it was started from, then scans the other volumes if that file is not there.
+
+The cluster size is 512 bytes while the two files fit in fewer than 4,085 clusters, which is the FAT12 limit. Past that line the script doubles the cluster size and the volume stays FAT12. With the loader at 51,200 bytes and the kernel at 324,520 bytes, `efi.img` is 381,440 bytes and `target/vkrust.iso` is 1,171,456 bytes (1.12 MiB). The Limine ISO was 4,278,272 bytes (4.08 MiB), and 3,533,026 bytes of that were Limine's boot files.
 
 `make run` and `make test` boot the ISO with OVMF. `scripts/qemu-fw.sh` prefers the combined firmware `/usr/share/ovmf/OVMF.fd` on QEMU's default `pc` machine, because the kernel programs an 8259 PIC. When that file is missing, the script uses the split 4 MiB firmware on `q35` and keeps a writable variable store at `target/ovmf-vars.fd`.
 
