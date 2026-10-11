@@ -94,6 +94,9 @@ pub fn window_size() -> (u16, u16) {
 
 pub fn write_bytes(bytes: &[u8]) {
     if let Some(console) = CONSOLE.lock().as_mut() {
+        // The cursor is an inverted cell. Clear it before this write, or Enter
+        // leaves that block sitting after the command.
+        console.hide_cursor();
         for &byte in bytes {
             console.byte(byte);
         }
@@ -278,8 +281,17 @@ impl Console {
         self.redraw();
     }
 
+    fn hide_cursor(&mut self) {
+        if !self.cursor_on || self.cols == 0 || self.rows == 0 {
+            return;
+        }
+        let col = self.col.min(self.cols - 1);
+        let row = self.row.min(self.rows - 1);
+        self.paint(col, row, false);
+    }
+
     fn paint_cursor(&mut self) {
-        if !self.cursor_on {
+        if !self.cursor_on || self.cols == 0 || self.rows == 0 {
             return;
         }
         let col = self.col.min(self.cols - 1);

@@ -21,7 +21,7 @@ This folder explains how that machine is put together and why it is shaped this 
 | [Console](console.md) | The framebuffer, serial port, and the tty |
 | [Userland](userland.md) | The shell ELF, the builtins, and vim |
 
-Build and run instructions stay in the [project README](../README.md).
+Build and run instructions, and a [glossary](../README.md#glossary) of the terms in these pages, stay in the [project README](../README.md).
 
 ## A one-screen map of the source
 
