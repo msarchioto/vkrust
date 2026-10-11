@@ -3,7 +3,7 @@ name = "shell"
 version = "0.1.0"
 edition = "2024"
 license = "MIT"
-description = "fern userspace shell"
+description = "VKRUST userspace shell"
 
 [dependencies]
 abi = { path = "../abi" }

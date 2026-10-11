@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 520" role="img">
+  <title>Ring 3 entry and the iretq frame</title>
+  <desc>The shell runs in ring 3. int 0x80 enters the kernel on RSP0. iretq returns using a five-word frame.</desc>
+  <style>
+    text { font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif; fill: #1c1917; }
+    .title { font-size: 22px; font-weight: 650; }
+    .sub { font-size: 14px; fill: #5c564e; }
+    .label { font-size: 16px; font-weight: 650; }
+    .small { font-size: 14px; }
+    .on-dark { fill: #f6f3ec; }
+    .mono { font-family: ui-monospace, "Cascadia Code", "Source Code Pro", monospace; font-size: 14px; }
+  </style>
+  <rect width="960" height="520" fill="#f6f3ec"/>
+  <text class="title" x="40" y="40">Two privilege levels</text>
+  <text class="sub" x="40" y="64">Selectors checked at boot: CS 0x23, SS 0x1b, RFLAGS 0x202</text>
+
+  <rect x="40" y="92" width="400" height="180" rx="12" fill="#e5f2ea" stroke="#b7d7c4"/>
+  <text class="label" x="60" y="124">Ring 3, the shell</text>
+  <text class="small" x="60" y="154">CS selector 0x23, user code, RPL 3</text>
+  <text class="small" x="60" y="178">SS selector 0x1b, user data, RPL 3</text>
+  <text class="small" x="60" y="202">Stack top 0x00700000</text>
+  <text class="small" x="60" y="226">Enters with interrupts enabled</text>
+
+  <rect x="520" y="92" width="400" height="180" rx="12" fill="#143d2c"/>
+  <text class="label on-dark" x="540" y="124">Ring 0, the kernel</text>
+  <text class="small on-dark" x="540" y="154">CS from the kernel code descriptor</text>
+  <text class="small on-dark" x="540" y="178">RSP0: 64 KiB stack in .bss</text>
+  <text class="small on-dark" x="540" y="202">Double-fault IST: another 64 KiB in .bss</text>
+  <text class="small on-dark" x="540" y="226">int 0x80 gate is DPL 3</text>
+
+  <path d="M440 150 H500" stroke="#1f6b45" stroke-width="2" fill="none"/>
+  <polygon points="500,144 514,150 500,156" fill="#1f6b45"/>
+  <text class="small" x="448" y="142">int 0x80</text>
+  <path d="M514 210 H454" stroke="#a86b28" stroke-width="2" fill="none"/>
+  <polygon points="454,204 440,210 454,216" fill="#a86b28"/>
+  <text class="small" x="456" y="246">iretq</text>
+
+  <text class="label" x="40" y="312">iretq frame, pushed last on top</text>
+  <g font-family="ui-monospace, Cascadia Code, monospace" font-size="14">
+    <rect x="40" y="328" width="880" height="36" fill="#fffdf9" stroke="#d9d1c5"/>
+    <text x="56" y="351">SS 0x1b</text>
+    <rect x="40" y="364" width="880" height="36" fill="#f8efe3" stroke="#d9d1c5"/>
+    <text x="56" y="387">RSP 0x00700000</text>
+    <rect x="40" y="400" width="880" height="36" fill="#fffdf9" stroke="#d9d1c5"/>
+    <text x="56" y="423">RFLAGS 0x202</text>
+    <rect x="40" y="436" width="880" height="36" fill="#f8efe3" stroke="#d9d1c5"/>
+    <text x="56" y="459">CS 0x23</text>
+    <rect x="40" y="472" width="880" height="36" fill="#143d2c"/>
+    <text class="on-dark" x="56" y="495">RIP  shell entry</text>
+  </g>
+</svg>

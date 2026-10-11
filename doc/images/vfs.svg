@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 520" role="img">
+  <title>Seeded filesystem and the node model</title>
+  <desc>The in-memory tree seeded at boot, and a node that is either a directory of child indexes or a file of bytes.</desc>
+  <style>
+    text { font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif; fill: #1c1917; }
+    .title { font-size: 22px; font-weight: 650; }
+    .sub { font-size: 14px; fill: #5c564e; }
+    .label { font-size: 16px; font-weight: 650; }
+    .small { font-size: 15px; }
+    .on-dark { fill: #f6f3ec; }
+    .mono { font-family: ui-monospace, "Cascadia Code", "Source Code Pro", monospace; font-size: 14px; }
+  </style>
+  <rect width="960" height="520" fill="#f6f3ec"/>
+  <text class="title" x="40" y="40">In-memory filesystem</text>
+  <text class="sub" x="40" y="64">Indexes, not inodes on a disk. One current directory for the whole machine.</text>
+
+  <rect x="40" y="92" width="460" height="392" rx="12" fill="#fffdf9" stroke="#d9d1c5"/>
+  <text class="label" x="60" y="124">Seeded at boot</text>
+
+  <rect x="70" y="148" width="120" height="36" rx="8" fill="#143d2c"/>
+  <text class="small on-dark" x="114" y="171">/</text>
+  <path d="M130 184 V210" stroke="#1f6b45" stroke-width="2"/>
+  <path d="M90 210 H360" stroke="#1f6b45" stroke-width="2"/>
+  <path d="M90 210 V228" stroke="#1f6b45" stroke-width="2"/>
+  <path d="M230 210 V228" stroke="#1f6b45" stroke-width="2"/>
+  <path d="M360 210 V228" stroke="#1f6b45" stroke-width="2"/>
+
+  <rect x="60" y="228" width="150" height="36" rx="8" fill="#1f6b45"/>
+  <text class="small on-dark" x="96" y="251">README</text>
+  <rect x="220" y="228" width="120" height="36" rx="8" fill="#1f6b45"/>
+  <text class="small on-dark" x="252" y="251">home</text>
+  <rect x="350" y="228" width="120" height="36" rx="8" fill="#1f6b45"/>
+  <text class="small on-dark" x="390" y="251">tmp</text>
+
+  <path d="M280 264 V300" stroke="#1f6b45" stroke-width="2"/>
+  <rect x="220" y="300" width="120" height="36" rx="8" fill="#2f8f5b"/>
+  <text class="small on-dark" x="254" y="323">user</text>
+  <path d="M280 336 V372" stroke="#1f6b45" stroke-width="2"/>
+  <rect x="190" y="372" width="180" height="36" rx="8" fill="#e5f2ea" stroke="#b7d7c4"/>
+  <text class="small" x="214" y="395">welcome.txt</text>
+  <text class="sub" x="60" y="450">tmp starts empty. The shell creates the rest.</text>
+
+  <rect x="520" y="92" width="400" height="392" rx="12" fill="#fffdf9" stroke="#d9d1c5"/>
+  <text class="label" x="540" y="124">One node</text>
+  <text class="mono" x="540" y="164">name      up to 64 bytes</text>
+  <text class="mono" x="540" y="192">parent    index, or none for /</text>
+  <text class="mono" x="540" y="220">live      false after unlink</text>
+  <rect x="540" y="248" width="360" height="88" rx="8" fill="#e5f2ea" stroke="#b7d7c4"/>
+  <text class="small" x="560" y="280">Directory</text>
+  <text class="mono" x="560" y="308">children: vector of indexes</text>
+  <rect x="540" y="352" width="360" height="88" rx="8" fill="#f8efe3" stroke="#e2c9a4"/>
+  <text class="small" x="560" y="384">File</text>
+  <text class="mono" x="560" y="412">data: vector of bytes</text>
+</svg>

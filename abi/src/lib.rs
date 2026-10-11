@@ -1,4 +1,4 @@
-//! Syscall numbers and data layouts shared by the fern kernel and its shell.
+//! Syscall numbers and data layouts shared by the vkr-user kernel and its shell.
 //!
 //! The calling convention matches the Linux x86_64 syscall registers, invoked
 //! with `int 0x80` instead of the `syscall` instruction:
@@ -17,6 +17,7 @@ pub const SYS_EXIT: u64 = 60;
 pub const SYS_GETCWD: u64 = 79;
 pub const SYS_CHDIR: u64 = 80;
 pub const SYS_MKDIR: u64 = 83;
+pub const SYS_RENAME: u64 = 82;
 pub const SYS_UNLINK: u64 = 87;
 pub const SYS_REBOOT: u64 = 169;
 pub const SYS_GETDENTS: u64 = 217;

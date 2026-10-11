@@ -1,4 +1,4 @@
-//! fern — a small x86_64 kernel. Limine boots it; the shell runs in ring 3.
+//! VKRUST - Vibe Kernel in RUST. Limine boots it; the shell runs in ring 3.
 
 #![no_std]
 #![no_main]
@@ -29,7 +29,7 @@ static SHELL_ELF: &[u8] = include_bytes!(env!("USER_ELF"));
 #[unsafe(no_mangle)]
 extern "C" fn kmain() -> ! {
     serial::init();
-    serial_println!("fern kernel");
+    serial_println!("vkr-user kernel");
 
     // The kernel copies syscall arguments out of user pages.
     unsafe {
@@ -51,7 +51,7 @@ extern "C" fn kmain() -> ! {
     console::init(boot.framebuffer);
     vfs::init();
 
-    kprintln!("fern 0.1.0");
+    kprintln!("vkr-user 0.1.0");
     process::enter(&mut mapper, &mut frames, SHELL_ELF);
 }
 
@@ -63,7 +63,13 @@ pub fn hlt_loop() -> ! {
 
 pub fn exit_qemu(code: u32) -> ! {
     unsafe {
+        // `make test` adds isa-debug-exit on this port. A plain QEMU window
+        // ignores the write, so the ACPI sleep below is what closes it.
         Port::<u32>::new(0xf4).write(code);
+        // Default `pc` machine: PIIX4 PM1a control, S5 (SLP_EN).
+        Port::<u16>::new(0x604).write(0x2000);
+        // Bochs and older QEMU.
+        Port::<u16>::new(0xb004).write(0x2000);
     }
     hlt_loop();
 }

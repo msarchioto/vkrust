@@ -1,0 +1,60 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 760" role="img">
+  <title>vkr-user virtual address space</title>
+  <desc>Higher-half kernel, HHDM window, non-canonical gap, supervisor heap, and the low user image, stack, and heap. Not drawn to scale.</desc>
+  <style>
+    text { font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif; fill: #1c1917; }
+    .title { font-size: 22px; font-weight: 650; }
+    .sub { font-size: 14px; fill: #5c564e; }
+    .group { font-size: 13px; font-weight: 700; letter-spacing: 0.06em; fill: #5c564e; }
+    .name { font-size: 16px; font-weight: 650; }
+    .addr { font-family: ui-monospace, "Cascadia Code", "Source Code Pro", monospace; font-size: 14px; }
+    .note { font-size: 14px; fill: #3f3a34; }
+    .on-dark { fill: #f6f3ec; }
+  </style>
+  <rect width="960" height="760" fill="#f6f3ec"/>
+  <text class="title" x="40" y="40">Virtual address space</text>
+  <text class="sub" x="40" y="64">4-level paging. Bands are in address order and are not to scale.</text>
+
+  <text class="group" x="40" y="100">HIGHER HALF</text>
+  <rect x="40" y="112" width="880" height="72" rx="10" fill="#143d2c"/>
+  <text class="name on-dark" x="60" y="142">Kernel image</text>
+  <text class="addr on-dark" x="60" y="166">0xffffffff80000000</text>
+  <text class="note on-dark" x="340" y="154">.text, .rodata, .data with Limine requests, .bss stacks</text>
+
+  <rect x="40" y="196" width="880" height="72" rx="10" fill="#1f6b45"/>
+  <text class="name on-dark" x="60" y="226">HHDM window</text>
+  <text class="addr on-dark" x="60" y="250">base given by Limine</text>
+  <text class="note on-dark" x="340" y="238">physical RAM, seen by OffsetPageTable at virtual = physical + offset</text>
+
+  <text class="group" x="40" y="300">NON-CANONICAL</text>
+  <rect x="40" y="312" width="880" height="56" rx="10" fill="#ece7df" stroke="#d9d1c5"/>
+  <text class="name" x="60" y="346">Gap</text>
+  <text class="note" x="140" y="346">Bits 63:47 are not all equal. A pointer here faults. Nothing is mapped.</text>
+
+  <text class="group" x="40" y="400">LOWER HALF, SUPERVISOR</text>
+  <rect x="40" y="412" width="880" height="72" rx="10" fill="#a86b28"/>
+  <text class="name on-dark" x="60" y="442">Kernel heap</text>
+  <text class="addr on-dark" x="60" y="466">0x0000444444440000</text>
+  <text class="note on-dark" x="360" y="454">4 MiB. Present and writable. The user bit is clear.</text>
+
+  <text class="group" x="40" y="516">LOWER HALF, USER</text>
+  <rect x="40" y="528" width="880" height="64" rx="10" fill="#e6f0f6" stroke="#b7cddd"/>
+  <text class="name" x="60" y="554">Syscall ceiling</text>
+  <text class="addr" x="60" y="576">below 0x0000800000000000</text>
+  <text class="note" x="400" y="566">A copy also has to fall inside a recorded user region.</text>
+
+  <rect x="40" y="604" width="880" height="44" rx="8" fill="#d5ebdd" stroke="#b7d7c4"/>
+  <text class="name" x="60" y="632">User heap</text>
+  <text class="addr" x="220" y="632">0x00800000 for 2 MiB</text>
+  <text class="note" x="520" y="632">shell allocator</text>
+
+  <rect x="40" y="656" width="880" height="44" rx="8" fill="#c5e0d0" stroke="#b7d7c4"/>
+  <text class="name" x="60" y="684">User stack</text>
+  <text class="addr" x="220" y="684">0x00600000 .. 0x00700000</text>
+  <text class="note" x="560" y="684">64 KiB, grows down</text>
+
+  <rect x="40" y="708" width="880" height="44" rx="8" fill="#b7d7c4"/>
+  <text class="name" x="60" y="736">User image</text>
+  <text class="addr" x="220" y="736">0x00400000 .. 0x00600000</text>
+  <text class="note" x="560" y="736">shell ELF</text>
+</svg>

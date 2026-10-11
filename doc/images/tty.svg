@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 460" role="img">
+  <title>Keyboard and serial paths into the tty</title>
+  <desc>IRQ1 and IRQ4 fill byte rings. The tty decodes them into a canonical line or raw key bytes. Output goes to the framebuffer and to COM1.</desc>
+  <style>
+    text { font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif; fill: #1c1917; }
+    .title { font-size: 22px; font-weight: 650; }
+    .sub { font-size: 14px; fill: #5c564e; }
+    .label { font-size: 16px; font-weight: 650; }
+    .small { font-size: 14px; }
+    .on-dark { fill: #f6f3ec; }
+  </style>
+  <rect width="960" height="460" fill="#f6f3ec"/>
+  <text class="title" x="40" y="40">Console and tty</text>
+  <text class="sub" x="40" y="64">The same output bytes are painted and written to COM1.</text>
+
+  <rect x="40" y="96" width="250" height="88" rx="10" fill="#1e4d6b"/>
+  <text class="label on-dark" x="60" y="130">PS/2 keyboard</text>
+  <text class="small on-dark" x="60" y="156">IRQ1, vector 33, port 0x60</text>
+
+  <rect x="40" y="208" width="250" height="88" rx="10" fill="#1e4d6b"/>
+  <text class="label on-dark" x="60" y="242">COM1 serial</text>
+  <text class="small on-dark" x="60" y="268">IRQ4, vector 36, 115200 8N1</text>
+
+  <path d="M290 140 H360" stroke="#1e4d6b" stroke-width="2"/>
+  <polygon points="360,134 374,140 360,146" fill="#1e4d6b"/>
+  <path d="M290 252 H360" stroke="#1e4d6b" stroke-width="2"/>
+  <polygon points="360,246 374,252 360,258" fill="#1e4d6b"/>
+
+  <rect x="374" y="120" width="200" height="148" rx="10" fill="#e6f0f6" stroke="#b7cddd"/>
+  <text class="label" x="394" y="160">Byte rings</text>
+  <text class="small" x="394" y="188">512 scancodes</text>
+  <text class="small" x="394" y="212">512 serial bytes</text>
+  <text class="small" x="394" y="236">no alloc in the ISR</text>
+
+  <path d="M574 194 H640" stroke="#1f6b45" stroke-width="2"/>
+  <polygon points="640,188 654,194 640,200" fill="#1f6b45"/>
+
+  <rect x="654" y="96" width="266" height="220" rx="10" fill="#143d2c"/>
+  <text class="label on-dark" x="674" y="132">TTY</text>
+  <text class="small on-dark" x="674" y="164">Canonical line, echoed</text>
+  <text class="small on-dark" x="674" y="188">Delivered on Enter</text>
+  <text class="small on-dark" x="674" y="224">Raw, one key at a time</text>
+  <text class="small on-dark" x="674" y="248">Arrows are 0x80..0x86</text>
+  <text class="small on-dark" x="674" y="284">Sleeps with sti; hlt</text>
+
+  <rect x="40" y="360" width="880" height="68" rx="10" fill="#f8efe3" stroke="#e2c9a4"/>
+  <text class="label" x="60" y="392">Write path</text>
+  <text class="small" x="60" y="414">fd 1 and fd 2 go to the framebuffer cell grid and to COM1. Headless runs still see the session.</text>
+</svg>

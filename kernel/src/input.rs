@@ -67,7 +67,7 @@ struct Tty {
     serial: ByteRing,
     scancodes: ByteRing,
     esc: Esc,
-    keyboard: Keyboard<layouts::Us104Key, ScancodeSet1>,
+    keyboard: Keyboard<layouts::Uk105Key, ScancodeSet1>,
 }
 
 impl Tty {
@@ -79,7 +79,7 @@ impl Tty {
             serial: ByteRing::new(),
             scancodes: ByteRing::new(),
             esc: Esc::None,
-            keyboard: Keyboard::new(ScancodeSet1::new(), layouts::Us104Key, HandleControl::Ignore),
+            keyboard: Keyboard::new(ScancodeSet1::new(), layouts::Uk105Key, HandleControl::Ignore),
         }
     }
 }
@@ -211,16 +211,22 @@ impl Tty {
             let Ok(Some(event)) = self.keyboard.add_byte(scancode) else {
                 continue;
             };
-            if event.state != KeyState::Down {
-                continue;
-            }
+            // Key-up must reach the decoder. Otherwise Shift stays down and
+            // the next press of the `.` key produces `>`.
+            let state = event.state;
             let Some(decoded) = self.keyboard.process_keyevent(event) else {
                 continue;
             };
+            if state != KeyState::Down {
+                continue;
+            }
             let key = match decoded {
                 DecodedKey::Unicode('\n') | DecodedKey::Unicode('\r') => Key::Enter,
                 DecodedKey::Unicode('\u{8}') | DecodedKey::Unicode('\u{7f}') => Key::Backspace,
-                DecodedKey::Unicode(ch) if ch.is_ascii() && !ch.is_control() => Key::Char(ch as u8),
+                DecodedKey::Unicode(ch) => match latin1(ch) {
+                    Some(byte) => Key::Char(byte),
+                    None => continue,
+                },
                 DecodedKey::RawKey(KeyCode::Escape) => Key::Escape,
                 DecodedKey::RawKey(KeyCode::ArrowUp) => Key::Up,
                 DecodedKey::RawKey(KeyCode::ArrowDown) => Key::Down,
@@ -280,6 +286,19 @@ impl Tty {
             }
             _ => {}
         }
+    }
+}
+
+/// ASCII, plus the Latin-1 letters a UK keyboard actually produces (`£`, `¬`).
+fn latin1(ch: char) -> Option<u8> {
+    if ch.is_control() {
+        return None;
+    }
+    let code = u32::from(ch);
+    if code <= 0xFF {
+        Some(code as u8)
+    } else {
+        None
     }
 }
 

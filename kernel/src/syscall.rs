@@ -6,8 +6,8 @@ use alloc::vec;
 use abi::{
     DirEntry, Stat, WinSize, EBADF, EFAULT, EINVAL, ENAMETOOLONG, ENOENT, ENOSYS, ENOTTY,
     FD_STDERR, FD_STDOUT, SYS_CHDIR, SYS_CLOSE, SYS_EXIT, SYS_GETCWD, SYS_GETDENTS, SYS_IOCTL,
-    SYS_MKDIR, SYS_OPEN, SYS_READ, SYS_REBOOT, SYS_STAT, SYS_UNLINK, SYS_WRITE, TCSETS, TERM_RAW,
-    TIOCGWINSZ,
+    SYS_MKDIR, SYS_OPEN, SYS_READ, SYS_REBOOT, SYS_RENAME, SYS_STAT, SYS_UNLINK, SYS_WRITE, TCSETS,
+    TERM_RAW, TIOCGWINSZ,
 };
 
 use crate::{console, exit_qemu, input, vfs};
@@ -122,6 +122,11 @@ fn dispatch_inner(number: u64, a1: u64, a2: u64, a3: u64, _a4: u64) -> Result<us
         SYS_UNLINK => {
             let path = user_path(a1)?;
             vfs::unlink(&path).map(|()| 0)
+        }
+        SYS_RENAME => {
+            let from = user_path(a1)?;
+            let to = user_path(a2)?;
+            vfs::rename(&from, &to).map(|()| 0)
         }
         SYS_GETDENTS => sys_getdents(a1, a2, a3),
         SYS_EXIT => {

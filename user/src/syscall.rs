@@ -1,7 +1,7 @@
 use abi::{
     DirEntry, Stat, WinSize, ENOENT, FD_STDERR, SYS_CHDIR, SYS_CLOSE, SYS_EXIT, SYS_GETCWD,
-    SYS_GETDENTS, SYS_IOCTL, SYS_MKDIR, SYS_OPEN, SYS_READ, SYS_REBOOT, SYS_STAT, SYS_UNLINK,
-    SYS_WRITE, TCSETS, TIOCGWINSZ,
+    SYS_GETDENTS, SYS_IOCTL, SYS_MKDIR, SYS_OPEN, SYS_READ, SYS_REBOOT, SYS_RENAME, SYS_STAT,
+    SYS_UNLINK, SYS_WRITE, TCSETS, TIOCGWINSZ,
 };
 
 unsafe fn raw(number: u64, a1: u64, a2: u64, a3: u64, a4: u64) -> i64 {
@@ -14,6 +14,8 @@ unsafe fn raw(number: u64, a1: u64, a2: u64, a3: u64, a4: u64) -> i64 {
             in("rsi") a2,
             in("rdx") a3,
             in("r10") a4,
+            // The kernel may use XMM. Linux keeps those registers across a syscall.
+            clobber_abi("sysv64"),
             options(nostack),
         );
     }
@@ -79,6 +81,12 @@ pub fn unlink(path: &str) -> Result<(), i64> {
     cstr_call(SYS_UNLINK, path).map(|_| ())
 }
 
+pub fn rename(from: &str, to: &str) -> Result<(), i64> {
+    let source = cstring(from);
+    let dest = cstring(to);
+    check(unsafe { raw(SYS_RENAME, source.as_ptr() as u64, dest.as_ptr() as u64, 0, 0) }).map(|_| ())
+}
+
 pub fn chdir(path: &str) -> Result<(), i64> {
     cstr_call(SYS_CHDIR, path).map(|_| ())
 }
@@ -135,10 +143,15 @@ pub fn exit(code: u64) -> ! {
 }
 
 fn cstr_call(number: u64, path: &str) -> Result<usize, i64> {
+    let bytes = cstring(path);
+    check(unsafe { raw(number, bytes.as_ptr() as u64, 0, 0, 0) })
+}
+
+fn cstring(path: &str) -> alloc::vec::Vec<u8> {
     let mut bytes = alloc::vec::Vec::with_capacity(path.len() + 1);
     bytes.extend_from_slice(path.as_bytes());
     bytes.push(0);
-    check(unsafe { raw(number, bytes.as_ptr() as u64, 0, 0, 0) })
+    bytes
 }
 
 pub fn read_line() -> alloc::string::String {

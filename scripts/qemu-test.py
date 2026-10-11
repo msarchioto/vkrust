@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Boot target/fern.iso and exercise the shell over the serial port."""
+"""Boot target/vkrust.iso and exercise the shell over the serial port."""
 
 import os
 import shutil
@@ -8,7 +8,7 @@ import sys
 import time
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-ISO = os.path.join(ROOT, "target", "fern.iso")
+ISO = os.path.join(ROOT, "target", "vkrust.iso")
 TIMEOUT = 180
 
 
@@ -28,9 +28,9 @@ def qemu_cmd():
     if shutil.which("docker"):
         return [
             "docker", "run", "--rm", "-i",
-            "-v", f"{ROOT}:/src", "-w", "/src", "fern-osdev",
+            "-v", f"{ROOT}:/src", "-w", "/src", "vkrust-osdev",
             "qemu-system-x86_64",
-            "-cdrom", "target/fern.iso",
+            "-cdrom", "target/vkrust.iso",
             *args[2:],
         ]
     sys.exit("qemu-system-x86_64 is not installed and docker is unavailable")
@@ -111,43 +111,59 @@ def main():
     )
     guest = Guest(proc)
     try:
-        guest.wait_for("fern:/$ ", timeout=120)
+        guest.wait_for("vkr-user:/$ ", timeout=120)
+
+        # DEL (0x7f) and BS (0x08) must edit the line before the shell sees it.
+        guest.mark()
+        guest.send(b"echo abX\x7f\n")
+        out = guest.wait_for("vkr-user:/$ ")
+        expect(out, "\x08 \x08")
+        expect(out, "\nab\n")
+        if "\nabX" in out:
+            raise AssertionError(f"DEL left the deleted character in {out!r}")
+        guest.mark()
+        guest.send(b"echo cdZ\x08\n")
+        out = guest.wait_for("vkr-user:/$ ")
+        expect(out, "\ncd\n")
+        if "\ncdZ" in out:
+            raise AssertionError(f"BS left the deleted character in {out!r}")
+
         guest.mark()
         guest.send("help\n")
         guest.wait_for("poweroff")
-        guest.wait_for("fern:/$ ")
+        guest.wait_for("vkr-user:/$ ")
 
         guest.mark()
         guest.send("ls\n")
-        out = guest.wait_for("fern:/$ ")
+        out = guest.wait_for("vkr-user:/$ ")
         expect(out, "README")
         expect(out, "home/")
         expect(out, "tmp/")
 
         guest.mark()
         guest.send("mkdir /tmp/docs\n")
-        guest.wait_for("fern:/$ ")
+        guest.wait_for("vkr-user:/$ ")
         guest.mark()
         guest.send("touch /tmp/docs/a.txt\n")
-        guest.wait_for("fern:/$ ")
+        guest.wait_for("vkr-user:/$ ")
         guest.mark()
-        guest.send("echo hello fern > /tmp/docs/a.txt\n")
-        guest.wait_for("fern:/$ ")
+        guest.send("echo hello vrkrust > /tmp/docs/a.txt\n")
+        guest.wait_for("vkr-user:/$ ")
         guest.mark()
         guest.send("cat /tmp/docs/a.txt\n")
-        out = guest.wait_for("fern:/$ ")
-        expect(out, "hello fern")
+        out = guest.wait_for("vkr-user:/$ ")
+        expect(out, "hello vrkrust")
 
         guest.mark()
         guest.send("cd /tmp/docs\n")
-        guest.wait_for("fern:/tmp/docs$ ")
+        guest.wait_for("vkr-user:/tmp/docs$ ")
         guest.mark()
         guest.send("pwd\n")
-        out = guest.wait_for("fern:/tmp/docs$ ")
+        out = guest.wait_for("vkr-user:/tmp/docs$ ")
         expect(out, "/tmp/docs")
         guest.mark()
         guest.send("ls\n")
-        out = guest.wait_for("fern:/tmp/docs$ ")
+        out = guest.wait_for("vkr-user:/tmp/docs$ ")
         expect(out, "a.txt")
 
         guest.mark()
@@ -157,18 +173,102 @@ def main():
         guest.send(b"i")
         guest.wait_for("-- INSERT --", timeout=20)
         guest.mark()
-        guest.send(b"hello fern")
-        guest.wait_for("hello fern", timeout=20)
+        guest.send(b"hello vrkrust")
+        guest.wait_for("hello vrkrust", timeout=20)
         guest.mark()
         guest.send(b"\x1b")
         guest.wait_for("-- NORMAL --", timeout=20)
         guest.mark()
         guest.send(b":wq\n")
-        guest.wait_for("fern:/tmp/docs$ ", timeout=30)
+        guest.wait_for("vkr-user:/tmp/docs$ ", timeout=30)
         guest.mark()
         guest.send("cat /tmp/note.txt\n")
-        out = guest.wait_for("fern:/tmp/docs$ ")
-        expect(out, "hello fern")
+        out = guest.wait_for("vkr-user:/tmp/docs$ ")
+        expect(out, "hello vrkrust")
+
+        guest.mark()
+        guest.send("cd /\n")
+        guest.wait_for("vkr-user:/$ ")
+
+        guest.mark()
+        guest.send("mkdir -p /tmp/tree/nested\n")
+        guest.wait_for("vkr-user:/$ ")
+        guest.mark()
+        guest.send("echo data > /tmp/tree/nested/leaf.txt\n")
+        guest.wait_for("vkr-user:/$ ")
+        guest.mark()
+        guest.send("cp /tmp/tree/nested/leaf.txt /tmp/tree/copy.txt\n")
+        guest.wait_for("vkr-user:/$ ")
+        guest.mark()
+        guest.send("cat /tmp/tree/copy.txt\n")
+        out = guest.wait_for("vkr-user:/$ ")
+        expect(out, "data")
+
+        guest.mark()
+        guest.send("cp /tmp/tree /tmp/nope\n")
+        out = guest.wait_for("vkr-user:/$ ")
+        expect(out, "Is a directory")
+
+        guest.mark()
+        guest.send("cp -r /tmp/tree /tmp/tree/nested\n")
+        out = guest.wait_for("vkr-user:/$ ")
+        expect(out, "Invalid argument")
+
+        guest.mark()
+        guest.send("cp -r /tmp/tree /tmp/tree2\n")
+        guest.wait_for("vkr-user:/$ ")
+        guest.mark()
+        guest.send("cat /tmp/tree2/nested/leaf.txt\n")
+        out = guest.wait_for("vkr-user:/$ ")
+        expect(out, "data")
+        guest.mark()
+        guest.send("cat /tmp/tree2/copy.txt\n")
+        out = guest.wait_for("vkr-user:/$ ")
+        expect(out, "data")
+
+        guest.mark()
+        guest.send("mv /tmp/tree2/copy.txt /tmp/tree2/moved.txt\n")
+        guest.wait_for("vkr-user:/$ ")
+        guest.mark()
+        guest.send("ls /tmp/tree2\n")
+        out = guest.wait_for("vkr-user:/$ ")
+        expect(out, "moved.txt")
+        expect(out, "nested/")
+        if "copy.txt" in out:
+            raise AssertionError("copy.txt still listed after mv")
+
+        guest.mark()
+        guest.send("mv /tmp/tree /tmp/orchard\n")
+        guest.wait_for("vkr-user:/$ ")
+        guest.mark()
+        guest.send("cat /tmp/orchard/nested/leaf.txt\n")
+        out = guest.wait_for("vkr-user:/$ ")
+        expect(out, "data")
+
+        guest.mark()
+        guest.send("echo other > /tmp/orchard/take.txt\n")
+        guest.wait_for("vkr-user:/$ ")
+        guest.mark()
+        guest.send("mv /tmp/tree2/moved.txt /tmp/orchard/take.txt\n")
+        guest.wait_for("vkr-user:/$ ")
+        guest.mark()
+        guest.send("cat /tmp/orchard/take.txt\n")
+        out = guest.wait_for("vkr-user:/$ ")
+        expect(out, "data")
+
+        guest.mark()
+        guest.send("mv /tmp/tree2 /tmp/orchard\n")
+        guest.wait_for("vkr-user:/$ ")
+        guest.mark()
+        guest.send("cat /tmp/orchard/tree2/nested/leaf.txt\n")
+        out = guest.wait_for("vkr-user:/$ ")
+        expect(out, "data")
+
+        guest.mark()
+        guest.send("mkdir -p /tmp/orchard/nested\n")
+        out = guest.wait_for("vkr-user:/$ ")
+        if "File exists" in out:
+            raise AssertionError("mkdir -p reported File exists")
 
         guest.mark()
         guest.send("poweroff\n")

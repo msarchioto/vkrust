@@ -63,11 +63,11 @@ impl Vfs {
         let _ = self.mkdir_at(0, "tmp");
         let _ = self.create_file(
             "/README",
-            b"Welcome to fern.\n\n\
+            b"Welcome to vkr-user.\n\n\
 The shell is a ring-3 program. The filesystem is in memory and is\n\
 cleared when the machine reboots.\n\n\
-Commands: help, ls, cd, pwd, mkdir, touch, cat, rm, echo, vim, clear,\n\
-uname, poweroff.\n",
+Commands: help, ls, cd, pwd, mkdir, touch, cp, mv, cat, rm, echo, vim,\n\
+clear, uname, poweroff.\n",
         );
         let _ = self.create_file(
             "/home/user/welcome.txt",
@@ -88,18 +88,54 @@ uname, poweroff.\n",
         if id == 0 {
             return Err(EINVAL);
         }
-        let parent = self.nodes[id].parent.ok_or(EINVAL)?;
         match &self.nodes[id].kind {
             Kind::Dir { children } if !children.is_empty() => return Err(ENOTEMPTY),
             _ => {}
         }
-        if let Kind::Dir { children } = &mut self.nodes[parent].kind {
-            children.retain(|child| *child != id);
+        self.detach(id)
+    }
+
+    /// Move or rename `from` onto `to`. An existing file is replaced. An existing
+    /// directory is replaced only when it is empty and `from` is also a directory.
+    pub fn rename(&mut self, from: &str, to: &str) -> Result<(), i64> {
+        let src = self.resolve(from)?;
+        if src == 0 {
+            return Err(EINVAL);
         }
-        self.nodes[id].live = false;
-        if self.cwd == id {
-            self.cwd = parent;
+        let (parent, name) = self.parent_and_name(to)?;
+        self.check_name(name)?;
+        if self.is_dir(src) && self.contains(src, parent) {
+            return Err(EINVAL);
         }
+        if let Some(existing) = self.child(parent, name) {
+            if existing == src {
+                return Ok(());
+            }
+            match (self.is_dir(src), self.is_dir(existing)) {
+                (true, true) => {
+                    if let Kind::Dir { children } = &self.nodes[existing].kind {
+                        if !children.is_empty() {
+                            return Err(ENOTEMPTY);
+                        }
+                    }
+                    self.detach(existing)?;
+                }
+                (false, false) => self.detach(existing)?,
+                (true, false) => return Err(ENOTDIR),
+                (false, true) => return Err(EISDIR),
+            }
+        }
+        let old_parent = self.nodes[src].parent.ok_or(EINVAL)?;
+        if old_parent != parent {
+            if let Kind::Dir { children } = &mut self.nodes[old_parent].kind {
+                children.retain(|child| *child != src);
+            }
+            if let Kind::Dir { children } = &mut self.nodes[parent].kind {
+                children.push(src);
+            }
+            self.nodes[src].parent = Some(parent);
+        }
+        self.nodes[src].name = String::from(name);
         Ok(())
     }
 
@@ -387,6 +423,32 @@ uname, poweroff.\n",
         matches!(self.nodes[id].kind, Kind::File { .. })
     }
 
+    fn contains(&self, ancestor: usize, node: usize) -> bool {
+        let mut cur = Some(node);
+        while let Some(id) = cur {
+            if id == ancestor {
+                return true;
+            }
+            cur = self.nodes[id].parent;
+        }
+        false
+    }
+
+    fn detach(&mut self, id: usize) -> Result<(), i64> {
+        if id == 0 {
+            return Err(EINVAL);
+        }
+        let parent = self.nodes[id].parent.ok_or(EINVAL)?;
+        if let Kind::Dir { children } = &mut self.nodes[parent].kind {
+            children.retain(|child| *child != id);
+        }
+        self.nodes[id].live = false;
+        if self.cwd == id {
+            self.cwd = parent;
+        }
+        Ok(())
+    }
+
     fn check_name(&self, name: &str) -> Result<(), i64> {
         if name.is_empty() || name.len() > NAME_MAX || name.contains('/') {
             Err(ENAMETOOLONG)
@@ -422,6 +484,9 @@ pub fn mkdir(path: &str) -> Result<(), i64> {
 }
 pub fn unlink(path: &str) -> Result<(), i64> {
     with(|vfs| vfs.unlink(path))
+}
+pub fn rename(from: &str, to: &str) -> Result<(), i64> {
+    with(|vfs| vfs.rename(from, to))
 }
 pub fn chdir(path: &str) -> Result<(), i64> {
     with(|vfs| vfs.chdir(path))

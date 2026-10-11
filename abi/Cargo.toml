@@ -3,6 +3,6 @@ name = "abi"
 version = "0.1.0"
 edition = "2024"
 license = "MIT"
-description = "Shared syscall ABI between the fern kernel and its userspace shell"
+description = "Shared syscall ABI for VKRUST"
 
 [dependencies]

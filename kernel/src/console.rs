@@ -2,7 +2,7 @@
 
 use core::fmt;
 use core::fmt::Write;
-use font8x8::UnicodeFonts;
+use font8x8::{UnicodeFonts, BASIC_FONTS, LATIN_FONTS};
 use spin::Mutex;
 
 use crate::boot::Framebuffer;
@@ -146,11 +146,7 @@ impl Console {
             }
             b'\n' => self.newline(),
             b'\r' => self.col = 0,
-            0x08 => {
-                if self.col > 0 {
-                    self.col -= 1;
-                }
-            }
+            0x08 => self.cursor_left(),
             b'\t' => {
                 let next = (self.col + 8) & !7;
                 while self.col < next && self.col < self.cols {
@@ -227,6 +223,27 @@ impl Console {
         self.col += 1;
     }
 
+    /// Move onto the previous cell, wrapping to the end of the previous row.
+    /// The cursor is drawn over a cell, so that cell is painted normally
+    /// before the cursor moves. Otherwise backspace leaves a solid block
+    /// where the cursor used to sit.
+    fn cursor_left(&mut self) {
+        if self.cols == 0 || self.rows == 0 {
+            return;
+        }
+        if self.cursor_on {
+            let col = self.col.min(self.cols - 1);
+            let row = self.row.min(self.rows - 1);
+            self.paint(col, row, false);
+        }
+        if self.col > 0 {
+            self.col -= 1;
+        } else if self.row > 0 {
+            self.row -= 1;
+            self.col = self.cols - 1;
+        }
+    }
+
     fn newline(&mut self) {
         self.col = 0;
         if self.row + 1 < self.rows {
@@ -278,6 +295,14 @@ impl Console {
         }
     }
 
+    fn glyph_for(ch: u8) -> [u8; 8] {
+        let ch = char::from(ch);
+        BASIC_FONTS
+            .get(ch)
+            .or_else(|| LATIN_FONTS.get(ch))
+            .unwrap_or([0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00])
+    }
+
     fn paint(&mut self, col: usize, row: usize, cursor: bool) {
         let ch = self.cells[row * self.cols + col].ch;
         let (fg, bg) = if cursor {
@@ -285,9 +310,7 @@ impl Console {
         } else {
             (rgb(0xc8, 0xcc, 0xd4), rgb(0x14, 0x16, 0x1c))
         };
-        let glyph = font8x8::BASIC_FONTS
-            .get(ch as char)
-            .unwrap_or([0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]);
+        let glyph = Self::glyph_for(ch);
         let origin_x = col * 8 * self.scale;
         let origin_y = row * 8 * self.scale;
         for gy in 0..8 {

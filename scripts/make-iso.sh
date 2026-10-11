@@ -1,6 +1,6 @@
 #!/bin/bash
-# Package kernel/target/.../kernel into target/fern.iso.
-# Uses host xorriso/gcc when they exist, otherwise the fern-osdev image.
+# Package kernel/target/.../kernel into target/vkrust.iso.
+# Uses host xorriso/gcc when they exist, otherwise the vkrust-osdev image.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -13,17 +13,17 @@ have_tools() {
         && command -v make >/dev/null 2>&1
 }
 
-# The fern-osdev image ships gcc without libc headers. Install them when root.
+# The vkrust-osdev image ships gcc without libc headers. Install them when root.
 if [[ "$(id -u)" -eq 0 && ! -f /usr/include/stdio.h ]] && command -v apt-get >/dev/null 2>&1; then
     apt-get update
     apt-get install -y libc6-dev
 fi
 
 if ! have_tools; then
-    if command -v docker >/dev/null 2>&1 && docker image inspect fern-osdev >/dev/null 2>&1; then
-        exec docker run --rm -v "$ROOT:/src" -w /src fern-osdev bash scripts/make-iso.sh
+    if command -v docker >/dev/null 2>&1 && docker image inspect vkrust-osdev >/dev/null 2>&1; then
+        exec docker run --rm -v "$ROOT:/src" -w /src vkrust-osdev bash scripts/make-iso.sh
     fi
-    echo "make-iso: need gcc, make, git, and xorriso (or the fern-osdev docker image)" >&2
+    echo "make-iso: need gcc, make, git, and xorriso (or the vkrust-osdev docker image)" >&2
     exit 1
 fi
 
@@ -57,6 +57,6 @@ xorriso -as mkisofs -R -r -J \
     -no-emul-boot -boot-load-size 4 -boot-info-table \
     --efi-boot boot/limine/limine-uefi-cd.bin \
     -efi-boot-part --efi-boot-image --protective-msdos-label \
-    "$STAGE" -o target/fern.iso
-"$LIMINE/limine" bios-install target/fern.iso
-echo "wrote target/fern.iso"
+    "$STAGE" -o target/vkrust.iso
+"$LIMINE/limine" bios-install target/vkrust.iso
+echo "wrote target/vkrust.iso"
